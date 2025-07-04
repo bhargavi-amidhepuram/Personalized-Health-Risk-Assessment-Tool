@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Health Risk Assessment Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Personalized Health Risk Assessment Tool</h1>
+    <form id="riskForm">
+        <label>Age (years):<input type="number" name="age" min="18" max="120" required></label>
+        <label>BMI (kg/m²):<input type="number" name="bmi" step="0.1" min="10" max="50" required></label>
+        <label>Systolic Blood Pressure (mmHg):<input type="number" name="systolic_bp" min="80" max="200" required></label>
+        <label>Current smoker? 
+            <select name="smoker" required>
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+            </select>
+        </label>
+        <label>Family history of Diabetes or Heart Disease?
+            <select name="family_history" required>
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+            </select>
+        </label>
+        <label>Exercise frequency (days per week):
+            <input type="number" name="exercise_freq" min="0" max="7" required>
+        </label>
+        <button type="submit">Calculate Risks</button>
+    </form>
+
+    <div id="output" class="result" style="display:none;"></div>
+
+<script>
+    document.getElementById('riskForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {
+            age: form.age.value,
+            bmi: form.bmi.value,
+            systolic_bp: form.systolic_bp.value,
+            smoker: form.smoker.value,
+            family_history: form.family_history.value,
+            exercise_freq: form.exercise_freq.value
+        };
+
+        const outputDiv = document.getElementById('output');
+        outputDiv.style.display = 'none';
+        outputDiv.innerHTML = 'Calculating...';
+
+        const response = await fetch('/calculate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        let html = '<h2>Risk Scores</h2>';
+        for(const disease in result.risks) {
+            let riskPercent = (result.risks[disease]*100).toFixed(1);
+            html += `<h3>${disease}: ${riskPercent}% risk</h3>`;
+            if(result.risks[disease] >= result.thresholds[disease]){
+                html += `<div class="high-risk"><strong>Elevated risk detected!</strong><br>`;
+                html += `<strong>Prevention Recommendations:</strong><ul>`;
+                for(const p of result.prevention[disease]) {
+                    html += `<li>${p}</li>`;
+                }
+                html += `</ul><strong>Care Recommendations:</strong><ul>`;
+                for(const c of result.care[disease]) {
+                    html += `<li>${c}</li>`;
+                }
+                html += `</ul></div>`;
+            } else {
+                html += `<p>Risk is within normal limits.</p>`;
+            }
+        }
+
+        outputDiv.innerHTML = html;
+        outputDiv.style.display = 'block';
+    });
+</script>
+</body>
+</html>
